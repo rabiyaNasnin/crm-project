@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}
+Admin Dashboard
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>Admin Dashboard</h1>
+
+<a href="{% url 'add_employee' %}" class="btn btn-primary">
+    + Add Employee
+</a>
+
+
+</div>
+
+<!-- System Summary -->
+
+<h2>System Summary</h2>
+
+<div class="card-container">
+
+
+<div class="card">
+    <h3>Total Employees</h3>
+    <p>{{ employee_count }}</p>
+</div>
+
+<div class="card">
+    <h3>Total Robots</h3>
+    <p>{{ robot_count }}</p>
+</div>
+
+
+</div>
+
+<!-- Employees -->
+
+<h2>Employees</h2>
+
+{% if employees %}
+
+<div class="table-container">
+
+
+<table>
+
+    <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Department</th>
+        <th>Designation</th>
+        <th>Login Account</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for employee in employees %}
+
+    <tr>
+        <td>{{ employee.employee_id }}</td>
+        <td>{{ employee.name }}</td>
+        <td>{{ employee.email }}</td>
+        <td>{{ employee.department }}</td>
+        <td>{{ employee.designation }}</td>
+        <td>
+            {% if employee.user %}
+                Active
+            {% else %}
+                No Account
+            {% endif %}
+        </td>
+        <td>
+            <a href="{% url 'edit_employee' employee.id %}">
+                Edit
+            </a>
+        </td>
+    </tr>
+
+    </tr>
+
+    {% endfor %}
+
+</table>
+
+
+</div>
+
+{% else %}
+
+<p>No employees found.</p>
+
+{% endif %}
+
+<!-- Robots -->
+
+<h2 style="margin-top: 30px;">Robots</h2>
+
+{% if robots %}
+
+<div class="table-container">
+
+
+<table>
+
+    <tr>
+        <th>Robot ID</th>
+        <th>Employee</th>
+        <th>Battery</th>
+        <th>Status</th>
+        <th>Created At</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for robot in robots %}
+
+    <tr>
+
+        <td>{{ robot.robot_id }}</td>
+
+        <td>
+            {{ robot.employee.name }}
+            ({{ robot.employee.employee_id }})
+        </td>
+
+        <td>
+            {{ robot.battery_percentage }}%
+        </td>
+
+        <td>
+            {{ robot.status }}
+        </td>
+
+        <td>
+            {{ robot.created_at }}
+        </td>
+        <td>
+            <a href="{% url 'edit_robot' robot.id %}">
+                Edit
+            </a>
+        </td>
+
+    </tr>
+
+    {% endfor %}
+
+</table>
+
+
+</div>
+
+{% else %}
+
+<p>No robots found.</p>
+
+{% endif %}
+
+{% endblock %}

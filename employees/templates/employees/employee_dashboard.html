@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}
+Employee Dashboard
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .employee-dashboard {
+        max-width: 1200px;
+        margin: 30px auto;
+    }
+
+    /* Header */
+    .dashboard-header {
+        background: #1f2937;
+        color: white;
+        padding: 25px 30px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+    }
+
+    .dashboard-header h1 {
+        margin: 0;
+        font-size: 28px;
+    }
+
+    .dashboard-header p {
+        margin: 8px 0 0;
+        color: #d1d5db;
+    }
+
+    /* Action buttons */
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 25px;
+    }
+
+    .actions .btn {
+        padding: 11px 18px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    /* Profile */
+    .profile-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 25px;
+    }
+
+    .profile-card h2 {
+        margin-top: 0;
+        color: #1f2937;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+    }
+
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .profile-item {
+        background: #f8fafc;
+        padding: 14px;
+        border-radius: 6px;
+    }
+
+    .profile-item span {
+        display: block;
+        color: #6b7280;
+        font-size: 13px;
+        margin-bottom: 5px;
+    }
+
+    .profile-item strong {
+        color: #1f2937;
+    }
+
+    /* Robots */
+    .robots-section {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .robots-section h2 {
+        margin-top: 0;
+        color: #1f2937;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    th {
+        background: #1f2937;
+        color: white;
+        padding: 13px;
+        text-align: left;
+    }
+
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    tr:hover {
+        background: #f9fafb;
+    }
+
+    .no-robots {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 6px;
+        color: #6b7280;
+    }
+
+    /* Mobile */
+    @media (max-width: 700px) {
+        .profile-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .employee-dashboard {
+            width: 95%;
+        }
+
+        table {
+            font-size: 13px;
+        }
+    }
+</style>
+
+
+<div class="employee-dashboard">
+
+    <!-- Dashboard Header -->
+
+    <div class="dashboard-header">
+
+        <h1>Welcome, {{ employee.name }}</h1>
+
+        <p>Employee Dashboard</p>
+
+    </div>
+
+
+    <!-- Employee Actions -->
+
+    <div class="actions">
+
+        <a href="{% url 'create_robot' %}"
+           class="btn btn-primary">
+            + Create Robot
+        </a>
+
+        <a href="{% url 'employee_create_leave' %}"
+           class="btn btn-success">
+            + Request Leave
+        </a>
+
+        <a href="{% url 'employee_attendance' %}"
+           class="btn btn-primary">
+            Attendance
+        </a>
+
+        <a href="{% url 'employee_mark_attendance' %}"
+           class="btn btn-success">
+            Mark Attendance
+        </a>
+
+    </div>
+
+
+    <!-- Employee Profile -->
+
+    <div class="profile-card">
+
+        <h2>Employee Profile</h2>
+
+        <div class="profile-grid">
+
+            <div class="profile-item">
+                <span>Employee ID</span>
+                <strong>{{ employee.employee_id }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Name</span>
+                <strong>{{ employee.name }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Email</span>
+                <strong>{{ employee.email }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Phone</span>
+                <strong>{{ employee.phone }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Department</span>
+                <strong>{{ employee.department }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Designation</span>
+                <strong>{{ employee.designation }}</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Robots -->
+
+    <div class="robots-section">
+
+        <h2>My Robots</h2>
+
+        {% if robots %}
+
+        <table>
+
+            <tr>
+                <th>Robot ID</th>
+                <th>Battery</th>
+                <th>Created At</th>
+                <th>Status</th>
+            </tr>
+
+            {% for robot in robots %}
+
+            <tr>
+
+                <td>
+                    {{ robot.robot_id }}
+                </td>
+
+                <td>
+                    {{ robot.battery_percentage }}%
+                </td>
+
+                <td>
+                    {{ robot.created_at }}
+                </td>
+
+                <td>
+                    {{ robot.status }}
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+        {% else %}
+
+        <p class="no-robots">
+            You haven't created any robots yet.
+        </p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}
