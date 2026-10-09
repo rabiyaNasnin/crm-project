@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .chatbot-wrapper {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .chatbot-header {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .chatbot-header h1 {
+        margin-bottom: 8px;
+        font-size: 32px;
+        color: #1f2937;
+    }
+
+    .chatbot-header p {
+        color: #6b7280;
+        font-size: 15px;
+    }
+
+    .chatbot-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+
+    .chatbot-top {
+        background: #1f2937;
+        color: white;
+        padding: 18px 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .bot-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #ffffff;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .bot-title {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .bot-status {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-top: 3px;
+    }
+
+    .chat-area {
+        min-height: 350px;
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 25px;
+        background: #f9fafb;
+    }
+
+    .welcome-message {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        max-width: 75%;
+        color: #374151;
+        line-height: 1.6;
+    }
+
+    .welcome-message strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #111827;
+    }
+
+    .answer-message {
+        margin-top: 20px;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .answer-box {
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        border-radius: 12px;
+        padding: 16px;
+        max-width: 75%;
+        color: #374151;
+        line-height: 1.6;
+    }
+
+    .answer-box strong {
+        display: block;
+        margin-bottom: 6px;
+        color: #312e81;
+    }
+
+    .input-area {
+        padding: 20px;
+        border-top: 1px solid #e5e7eb;
+        background: #ffffff;
+    }
+
+    .input-area form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .prompt-input {
+        flex: 1;
+        resize: vertical;
+        min-height: 55px;
+        max-height: 150px;
+        padding: 14px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: 0.2s;
+    }
+
+    .prompt-input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+
+    .ask-button {
+        border: none;
+        border-radius: 10px;
+        padding: 14px 22px;
+        background: #4f46e5;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .ask-button:hover {
+        background: #4338ca;
+    }
+
+    .example-questions {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .example-questions span {
+        display: inline-block;
+        background: #f3f4f6;
+        padding: 6px 10px;
+        border-radius: 6px;
+        margin: 5px 5px 0 0;
+    }
+
+    @media (max-width: 700px) {
+        .chatbot-wrapper {
+            margin: 20px auto;
+        }
+
+        .input-area form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .ask-button {
+            width: 100%;
+        }
+
+        .welcome-message,
+        .answer-box {
+            max-width: 90%;
+        }
+    }
+</style>
+
+<div class="chatbot-wrapper">
+
+    <div class="chatbot-header">
+        <h1>CRM AI Assistant</h1>
+        <p>Ask questions and interact with your CRM assistant.</p>
+    </div>
+
+    <div class="chatbot-card">
+
+        <div class="chatbot-top">
+            <div class="bot-icon">AI</div>
+
+            <div>
+                <div class="bot-title">CRM Assistant</div>
+                <div class="bot-status">Powered by Groq AI</div>
+            </div>
+        </div>
+
+        <div class="chat-area">
+
+            <div class="welcome-message">
+                <strong>AI Assistant</strong>
+                Hello! I am your CRM AI assistant. Ask me a question to get started.
+            </div>
+
+            {% if answer %}
+                <div class="answer-message">
+                    <div class="answer-box">
+                        <strong>AI Assistant</strong>
+                        {{ answer|linebreaks }}
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+
+        <div class="input-area">
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <textarea
+                    class="prompt-input"
+                    name="prompt"
+                    rows="2"
+                    placeholder="Ask something about your CRM..."
+                    required
+                ></textarea>
+
+                <button type="submit" class="ask-button">
+                    Ask AI
+                </button>
+            </form>
+
+            <div class="example-questions">
+                Try asking:
+                <span>What can you help me with?</span>
+                <span>Give me a CRM summary</span>
+                <span>What is a robot?</span>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,366 @@
+<style>
+    .crm-ai-button {
+        position: fixed;
+        right: 25px;
+        bottom: 25px;
+        width: 62px;
+        height: 62px;
+        border: none;
+        border-radius: 50%;
+        background: #4f46e5;
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        z-index: 9999;
+        transition: transform 0.2s, background 0.2s;
+    }
+
+    .crm-ai-button:hover {
+        transform: scale(1.08);
+        background: #4338ca;
+    }
+
+    .crm-chat-popup {
+        display: none;
+        position: fixed;
+        right: 25px;
+        bottom: 100px;
+        width: 360px;
+        height: 500px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        z-index: 9998;
+        border: 1px solid #e5e7eb;
+    }
+
+    .crm-chat-popup.active {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .crm-chat-header {
+        background: #1f2937;
+        color: white;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .crm-chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .crm-chat-icon {
+        width: 38px;
+        height: 38px;
+        background: white;
+        color: #1f2937;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    .crm-chat-title {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .crm-chat-status {
+        font-size: 11px;
+        opacity: 0.8;
+        margin-top: 2px;
+    }
+
+    .crm-chat-close {
+        border: none;
+        background: transparent;
+        color: white;
+        font-size: 22px;
+        cursor: pointer;
+    }
+
+    .crm-chat-messages {
+        flex: 1;
+        padding: 16px;
+        background: #f9fafb;
+        overflow-y: auto;
+    }
+
+    .crm-ai-message {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 11px 13px;
+        margin-bottom: 12px;
+        color: #374151;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .crm-user-message {
+        background: #4f46e5;
+        color: white;
+        border-radius: 10px;
+        padding: 11px 13px;
+        margin-bottom: 12px;
+        margin-left: 35px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .crm-chat-input-area {
+        padding: 12px;
+        border-top: 1px solid #e5e7eb;
+        background: white;
+    }
+
+    .crm-chat-form {
+        display: flex;
+        gap: 8px;
+    }
+
+    .crm-chat-input {
+        flex: 1;
+        resize: none;
+        border: 1px solid #d1d5db;
+        border-radius: 9px;
+        padding: 10px;
+        font-family: inherit;
+        font-size: 13px;
+        outline: none;
+    }
+
+    .crm-chat-input:focus {
+        border-color: #6366f1;
+    }
+
+    .crm-chat-send {
+        border: none;
+        border-radius: 9px;
+        padding: 10px 14px;
+        background: #4f46e5;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .crm-chat-send:hover {
+        background: #4338ca;
+    }
+
+    @media (max-width: 600px) {
+        .crm-chat-popup {
+            right: 15px;
+            bottom: 90px;
+            width: calc(100% - 30px);
+            height: 500px;
+        }
+
+        .crm-ai-button {
+            right: 15px;
+            bottom: 15px;
+        }
+    }
+</style>
+
+
+<!-- Floating AI Button -->
+<button
+    type="button"
+    class="crm-ai-button"
+    id="crmAiButton"
+    title="Open CRM AI Assistant">
+    AI
+</button>
+
+
+<!-- Chatbot Popup -->
+<div class="crm-chat-popup" id="crmChatPopup">
+
+    <div class="crm-chat-header">
+
+        <div class="crm-chat-header-left">
+
+            <div class="crm-chat-icon">
+                AI
+            </div>
+
+            <div>
+                <div class="crm-chat-title">
+                    CRM Assistant
+                </div>
+
+                <div class="crm-chat-status">
+                    Powered by Groq AI
+                </div>
+            </div>
+
+        </div>
+
+        <button
+            type="button"
+            class="crm-chat-close"
+            id="crmChatClose">
+            ×
+        </button>
+
+    </div>
+
+
+    <div class="crm-chat-messages" id="crmChatMessages">
+
+        <div class="crm-ai-message">
+            <strong>AI Assistant</strong><br>
+            Hello! How can I help you with the CRM?
+        </div>
+
+    </div>
+
+
+    <div class="crm-chat-input-area">
+
+        <form
+            class="crm-chat-form"
+            id="crmChatForm">
+
+            {% csrf_token %}
+
+            <textarea
+                class="crm-chat-input"
+                id="crmChatInput"
+                rows="2"
+                placeholder="Ask something..."
+                required></textarea>
+
+            <button
+                type="submit"
+                class="crm-chat-send">
+                Send
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+    const crmAiButton = document.getElementById("crmAiButton");
+    const crmChatPopup = document.getElementById("crmChatPopup");
+    const crmChatClose = document.getElementById("crmChatClose");
+    const crmChatForm = document.getElementById("crmChatForm");
+    const crmChatInput = document.getElementById("crmChatInput");
+    const crmChatMessages = document.getElementById("crmChatMessages");
+    const crmChatSend = document.querySelector(".crm-chat-send");
+
+    crmAiButton.addEventListener("click", function () {
+        crmChatPopup.classList.toggle("active");
+
+        if (crmChatPopup.classList.contains("active")) {
+            crmChatInput.focus();
+        }
+    });
+
+    crmChatClose.addEventListener("click", function () {
+        crmChatPopup.classList.remove("active");
+    });
+
+    crmChatForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const message = crmChatInput.value.trim();
+
+        if (!message) {
+            return;
+        }
+
+        // Show user's message
+        const userMessage = document.createElement("div");
+        userMessage.className = "crm-user-message";
+        userMessage.textContent = message;
+
+        crmChatMessages.appendChild(userMessage);
+
+        crmChatInput.value = "";
+        crmChatInput.disabled = true;
+        crmChatSend.disabled = true;
+        crmChatSend.textContent = "Sending...";
+
+        crmChatMessages.scrollTop = crmChatMessages.scrollHeight;
+
+        // Show temporary AI message
+        const aiMessage = document.createElement("div");
+        aiMessage.className = "crm-ai-message";
+
+        aiMessage.innerHTML =
+            "<strong>AI Assistant</strong><br>" +
+            "Thinking...";
+
+        crmChatMessages.appendChild(aiMessage);
+
+        crmChatMessages.scrollTop = crmChatMessages.scrollHeight;
+
+        try {
+            const csrfToken = crmChatForm.querySelector(
+                "[name=csrfmiddlewaretoken]"
+            ).value;
+
+            const response = await fetch(
+                "{% url 'chatbot_api' %}",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/x-www-form-urlencoded;charset=UTF-8",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: new URLSearchParams({
+                        prompt: message
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "Something went wrong."
+                );
+            }
+
+            aiMessage.innerHTML =
+                "<strong>AI Assistant</strong><br>";
+
+            const answerText = document.createElement("div");
+            answerText.textContent = data.answer;
+
+            aiMessage.appendChild(answerText);
+
+        } catch (error) {
+
+            aiMessage.innerHTML =
+                "<strong>AI Assistant</strong><br>" +
+                "Sorry, I couldn't process your request.";
+
+            console.error("Chatbot error:", error);
+        }
+
+        crmChatInput.disabled = false;
+        crmChatSend.disabled = false;
+        crmChatSend.textContent = "Send";
+
+        crmChatInput.focus();
+
+        crmChatMessages.scrollTop =
+            crmChatMessages.scrollHeight;
+    });
+</script>
