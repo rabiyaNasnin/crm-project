@@ -296,6 +296,10 @@
 
 </main>
 
+{% if request.user.is_authenticated %}
+     {% include "employees/chatbot_widget.html" %}
+{% endif %}
+
 </body>
 
 </html>

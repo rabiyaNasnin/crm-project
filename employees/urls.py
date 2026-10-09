@@ -1,5 +1,14 @@
 from django.urls import path
-from .views import home, dashboard, employee_dashboard, create_robot, employee_create_leave, employee_attendance, employee_mark_attendance, company_login, add_employee, edit_employee, edit_robot, dashboard_selection, admin_login, employee_login, hr_login, logout_view
+from .views import(
+       home, dashboard, employee_dashboard, 
+       create_robot, employee_create_leave, 
+       employee_attendance, employee_mark_attendance, 
+       company_login, add_employee, edit_employee, 
+       edit_robot, dashboard_selection, admin_login, 
+       employee_login, hr_login, logout_view,company_logout_view,
+       chatbot,
+       chatbot_api,
+)
 
 
 urlpatterns = [
@@ -9,6 +18,7 @@ urlpatterns = [
     path("employee-login/", employee_login, name="employee_login"),
     path("hr-login/", hr_login, name="hr_login"),
     path("logout/", logout_view, name="logout"),
+    path("company-logout/",company_logout_view, name="company_logout"),
     path("dashboard-selection/", dashboard_selection, name="dashboard_selection"),
     path("admin-dashboard/", dashboard, name="dashboard"),
     path("employee/", employee_dashboard, name="employee_dashboard"),#employee dashboard url
@@ -19,4 +29,6 @@ urlpatterns = [
     path("add-employee/", add_employee, name="add_employee"),
     path("edit-employee/<int:employee_id>/", edit_employee, name="edit_employee"),
     path("employee/edit-robot/<int:robot_id>/", edit_robot, name="edit_robot"),
+    path("chatbot/", chatbot, name="chatbot"),
+    path("chatbot-api/", chatbot_api, name="chatbot_api"),
 ]

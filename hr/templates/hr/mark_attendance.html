@@ -2,24 +2,127 @@
 <html>
 <head>
     <title>Mark Attendance</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            color: #1f2937;
+        }
+
+        .attendance-container {
+            width: 90%;
+            max-width: 600px;
+            margin: 60px auto;
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .attendance-container h1 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 30px;
+            color: #1e293b;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .mark-btn {
+            width: 100%;
+            padding: 13px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #4f46e5;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .mark-btn:hover {
+            background: #4338ca;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 22px;
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Mark Attendance</h1>
 
-    <form method="POST">
-        {% csrf_token %}
+    <div class="attendance-container">
 
-        {{ form.as_p }}
+        <h1>Mark Attendance</h1>
 
-        <button type="submit">
-            Mark Attendance
-        </button>
-    </form>
+        <form method="POST">
+            {% csrf_token %}
 
-    <br>
-    <a href="{% url 'hr_dashboard' %}">
-        Back to HR Dashboard
-    </a>
+            <div class="form-group">
+                {{ form.employee.label_tag }}
+                {{ form.employee }}
+            </div>
+
+            <div class="form-group">
+                {{ form.date.label_tag }}
+                {{ form.date }}
+            </div>
+
+            <div class="form-group">
+                {{ form.status.label_tag }}
+                {{ form.status }}
+            </div>
+
+            <button type="submit" class="mark-btn">
+                Mark Attendance
+            </button>
+        </form>
+
+        <a href="{% url 'hr_dashboard' %}" class="back-link">
+            ← Back to HR Dashboard
+        </a>
+
+    </div>
+
 </body>
 </html>

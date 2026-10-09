@@ -93,7 +93,7 @@
 
         <a href="{% url 'hr_login' %}" class="dashboard-btn">HR</a>
         
-        <form method="POST" action="{% url 'logout' %}">
+        <form method="POST" action="{% url 'company_logout' %}">
             {% csrf_token %}
             <button type="submit" class="logout-btn">
                 Logout
