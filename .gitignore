@@ -13,6 +13,7 @@ env/
 # SQLite database
 db.sqlite3
 *.sqlite3
+crm_data.json
 
 # Django generated files
 staticfiles/
