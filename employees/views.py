@@ -1,5 +1,6 @@
 import os
 import json
+import difflib
 
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate, login, logout
@@ -7,6 +8,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db.models import Q
 
 from groq import Groq
 
@@ -56,9 +58,26 @@ def ask_groq(prompt):
 # ---------------------------------------------------------------------------
 # Data-access functions
 # ---------------------------------------------------------------------------
-def get_attendance(start_date, end_date, employee=None, employee_name=""):
-    start = timezone.datetime.strptime(start_date, "%Y-%m-%d").date()
-    end = timezone.datetime.strptime(end_date, "%Y-%m-%d").date()
+def _parse_date(value, default):
+    """Parse a date leniently; fall back to default on anything unusable."""
+    if value:
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
+            try:
+                return timezone.datetime.strptime(
+                    str(value).strip(), fmt
+                ).date()
+            except (ValueError, TypeError):
+                continue
+    return default
+
+
+def get_attendance(start_date="", end_date="", employee=None, employee_name=""):
+    today = timezone.localdate()
+    start = _parse_date(start_date, today)
+    end = _parse_date(end_date, start)
+
+    if end < start:
+        start, end = end, start
 
     records = Attendance.objects.filter(
         date__range=(start, end)
@@ -68,7 +87,10 @@ def get_attendance(start_date, end_date, employee=None, employee_name=""):
     if employee is not None:
         records = records.filter(employee=employee)
     elif employee_name:
-        records = records.filter(employee__name__icontains=employee_name)
+        records = records.filter(
+            Q(employee__name__icontains=employee_name)
+            | Q(employee__employee_id__icontains=employee_name)
+        )
 
     attendance_records = [
         {
@@ -105,7 +127,9 @@ def get_attendance(start_date, end_date, employee=None, employee_name=""):
     }
 
 
-def get_employee_data(user, employee_name="", department=""):
+def get_employee_data(
+    user, employee_name="", department="", employee_id=""
+):
     """
     Get employee information from the CRM database.
     Access is controlled based on the logged-in user's role.
@@ -135,7 +159,13 @@ def get_employee_data(user, employee_name="", department=""):
     employees = Employee.objects.all()
 
     if employee_name:
-        employees = employees.filter(name__icontains=employee_name)
+        employees = employees.filter(
+            Q(name__icontains=employee_name)
+            | Q(employee_id__icontains=employee_name)
+        )
+
+    if employee_id:
+        employees = employees.filter(employee_id__icontains=employee_id)
 
     if department:
         employees = employees.filter(department__icontains=department)
@@ -157,6 +187,54 @@ def get_employee_data(user, employee_name="", department=""):
     return {"employees": employee_list}
 
 
+def _match_choice(model, field, value):
+    """
+    Map a loosely-typed value onto the exact values actually stored in the
+    database for a CharField, so a spelling difference doesn't hide records.
+
+    For example, the robot status may be stored as "Maintainance" while the
+    user (or the model) writes "Maintenance". Plain icontains would find
+    nothing, so we first try exact, then substring, then fuzzy matching.
+    """
+    value = (value or "").strip()
+
+    if not value:
+        return ""
+
+    actual = [
+        v for v in model.objects.values_list(field, flat=True).distinct() if v
+    ]
+
+    if not actual:
+        return value
+
+    value_lower = value.lower()
+
+    # 1) Exact, case-insensitive.
+    for candidate in actual:
+        if candidate.lower() == value_lower:
+            return candidate
+
+    # 2) Either string contains the other.
+    for candidate in actual:
+        if value_lower in candidate.lower() or candidate.lower() in value_lower:
+            return candidate
+
+    # 3) Fuzzy match, to survive typos like "Maintainance" vs "Maintenance".
+    matches = difflib.get_close_matches(
+        value_lower,
+        [candidate.lower() for candidate in actual],
+        n=1,
+        cutoff=0.6,
+    )
+    if matches:
+        for candidate in actual:
+            if candidate.lower() == matches[0]:
+                return candidate
+
+    return value
+
+
 def get_robot_data(
     robot_id="", employee_name="", status="", battery_max=-1, battery_min=-1
 ):
@@ -171,9 +249,13 @@ def get_robot_data(
         robots = robots.filter(robot_id__icontains=robot_id)
 
     if employee_name:
-        robots = robots.filter(employee__name__icontains=employee_name)
+        robots = robots.filter(
+            Q(employee__name__icontains=employee_name)
+            | Q(employee__employee_id__icontains=employee_name)
+        )
 
     if status:
+        status = _match_choice(Robot, "status", status)
         robots = robots.filter(status__icontains=status)
 
     if battery_max is not None and battery_max >= 0:
@@ -220,9 +302,11 @@ def get_leave_data(
         records = records.filter(employee__name__icontains=employee_name)
 
     if status:
+        status = _match_choice(Leave, "status", status)
         records = records.filter(status__icontains=status)
 
     if leave_type:
+        leave_type = _match_choice(Leave, "leave_type", leave_type)
         records = records.filter(leave_type__icontains=leave_type)
 
     # Optional date range: keep leave that overlaps the window.
@@ -282,8 +366,17 @@ employee_tool = {
                     "type": "string",
                     "description": (
                         "Employee name to search for. "
-                        "Use an empty string when no employee name "
-                        "is specified."
+                        "You may also pass an employee ID here "
+                        "(for example emp01). "
+                        "Use an empty string when no employee is specified."
+                    ),
+                },
+                "employee_id": {
+                    "type": "string",
+                    "description": (
+                        "Employee ID to search for, such as emp01. "
+                        "Use this whenever the user refers to an employee "
+                        "by their ID. Use an empty string when not specified."
                     ),
                 },
                 "department": {
@@ -295,7 +388,7 @@ employee_tool = {
                     ),
                 },
             },
-            "required": ["employee_name", "department"],
+            "required": ["employee_name", "employee_id", "department"],
         },
     },
 }
@@ -382,11 +475,17 @@ attendance_tool = {
             "properties": {
                 "start_date": {
                     "type": "string",
-                    "description": "Start date in YYYY-MM-DD format.",
+                    "description": (
+                        "Start date in YYYY-MM-DD format. "
+                        "Leave empty to use today."
+                    ),
                 },
                 "end_date": {
                     "type": "string",
-                    "description": "End date in YYYY-MM-DD format.",
+                    "description": (
+                        "End date in YYYY-MM-DD format. "
+                        "Leave empty to use the start date."
+                    ),
                 },
                 "employee_name": {
                     "type": "string",
@@ -396,7 +495,7 @@ attendance_tool = {
                     ),
                 },
             },
-            "required": ["start_date", "end_date"],
+            "required": [],
         },
     },
 }
@@ -481,7 +580,10 @@ SYSTEM_PROMPT = (
     "If the user asks for a count or total (for example 'how many leave "
     "applications'), call the relevant tool and give the number directly. "
     "Do NOT ask for a date range unless the tool genuinely requires one. "
-    "For any question that is not about CRM data, just answer it normally."
+    "For any question that is not about CRM data, just answer it normally. "
+    "You must always give the user a useful answer and never reply with "
+    "nothing. If a lookup comes back empty, say what you searched for and "
+    "what you can look up instead."
 )
 
 
@@ -494,11 +596,13 @@ def _resolve_employee_name(prompt, provided_name=""):
     for emp in Employee.objects.all():
         if emp.name.lower() in prompt_lower:
             return emp.name
+        if emp.employee_id.lower() in prompt_lower:
+            return emp.employee_id
 
     return ""
 
 
-def _execute_tool_call(user, tool_call, prompt):
+def _dispatch_tool_call(user, tool_call, prompt):
     """Run one tool call and return its result as a plain dict."""
     function_name = tool_call.function.name
 
@@ -512,6 +616,7 @@ def _execute_tool_call(user, tool_call, prompt):
             user=user,
             employee_name=function_args.get("employee_name", ""),
             department=function_args.get("department", ""),
+            employee_id=function_args.get("employee_id", ""),
         )
 
     if function_name == "get_robot_data":
@@ -578,6 +683,22 @@ def _execute_tool_call(user, tool_call, prompt):
     return {"error": f"Unknown tool: {function_name}"}
 
 
+def _execute_tool_call(user, tool_call, prompt):
+    """Wrap tool dispatch so a single bad call can never break the chat."""
+    try:
+        return _dispatch_tool_call(user, tool_call, prompt)
+    except Exception as exc:
+        return {
+            "error": (
+                "The tool '"
+                + tool_call.function.name
+                + "' could not run: "
+                + str(exc)
+                + ". Answer using whatever information you already have."
+            )
+        }
+
+
 def run_crm_chatbot(user, prompt):
     """
     Full tool-calling loop: let the model ask for CRM data, run every tool
@@ -594,19 +715,28 @@ def run_crm_chatbot(user, prompt):
 
     tools = [attendance_tool, employee_tool, robot_tool, leave_tool]
 
-    for _ in range(5):
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
-        )
+    for _ in range(6):
+        try:
+            response = client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+            )
+        except Exception as exc:
+            return (
+                "Sorry, I could not reach the assistant just now ("
+                + str(exc)
+                + "). Please try again."
+            )
 
         message = response.choices[0].message
 
         # No tool needed -> the model already answered.
         if not message.tool_calls:
-            return message.content
+            if message.content and message.content.strip():
+                return message.content
+            break
 
         # Record the assistant's tool request(s).
         messages.append(
@@ -639,6 +769,21 @@ def run_crm_chatbot(user, prompt):
                     "content": json.dumps(result, default=str),
                 }
             )
+
+    # The model kept calling tools, or produced nothing. Ask once more for a
+    # plain final answer with tools disabled, so the user always gets a reply.
+    try:
+        final = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            tools=tools,
+            tool_choice="none",
+        )
+        content = final.choices[0].message.content
+        if content and content.strip():
+            return content
+    except Exception:
+        pass
 
     return "Sorry, I could not complete that request. Please try rephrasing it."
 
