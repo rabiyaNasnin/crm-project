@@ -38,6 +38,14 @@ def is_employee(user):
     return user.groups.filter(name="Employee").exists()
 
 
+def sync_employee_role(user, department):
+    """Keep the employee's Django role group aligned with their department."""
+    user.groups.remove(*Group.objects.filter(name__in=["Employee", "HR"]))
+    role_name = "HR" if department == "HR" else "Employee"
+    role_group, _ = Group.objects.get_or_create(name=role_name)
+    user.groups.add(role_group)
+
+
 # ---------------------------------------------------------------------------
 # Plain Groq helper (kept for any non-tool use)
 # ---------------------------------------------------------------------------
@@ -968,10 +976,7 @@ def add_employee(request):
                             user.email = employee.email
                             user.set_password(password)
                             user.save()
-                        employee_group, _ = Group.objects.get_or_create(
-                            name="Employee"
-                        )
-                        user.groups.add(employee_group)
+                        sync_employee_role(user, employee.department)
                         employee.user = user
                         employee.save()
                     return redirect("dashboard")
@@ -1032,6 +1037,7 @@ def edit_employee(request, employee_id):
                     employee.user.set_password(password)
 
                 employee.user.save()
+                sync_employee_role(employee.user, employee.department)
             else:
                 if not password:
                     form.add_error(
@@ -1052,8 +1058,7 @@ def edit_employee(request, employee_id):
                     email=employee.email,
                     password=password,
                 )
-                employee_group = Group.objects.get(name="Employee")
-                user.groups.add(employee_group)
+                sync_employee_role(user, employee.department)
                 employee.user = user
 
             employee.save()
