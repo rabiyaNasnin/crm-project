@@ -3,7 +3,8 @@ import json
 import difflib
 
 from django.contrib.auth.models import User, Group
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
@@ -836,170 +837,78 @@ def chatbot_api(request):
 # ---------------------------------------------------------------------------
 def home(request):
     if request.user.is_authenticated:
-        if request.user.is_superuser or request.user.groups.filter(
-            name="Admin"
-        ).exists():
-            return redirect("dashboard")
-
-        elif request.user.groups.filter(name="HR").exists():
-            return redirect("hr_dashboard")
-
-        elif request.user.groups.filter(name="Employee").exists():
-            return redirect("employee_dashboard")
+        response = redirect_for_role(request.user)
+        if response:
+            return response
+        logout(request)
 
     return redirect("login")
 
 
-def company_login(request):
-    if request.method == "POST":
-        company_id = request.POST.get("company_id", "")
-        company_password = request.POST.get("password", "")
-
-        expected_id = os.environ.get("COMPANY_LOGIN_ID")
-        expected_password = os.environ.get("COMPANY_LOGIN_PASSWORD")
-
-        if company_id == expected_id and company_password == expected_password:
-            request.session["company_access"] = True
-            return redirect("dashboard_selection")
-
-        return render(
-            request,
-            "employees/company_login.html",
-            {
-                "error": "Invalid company ID or password.",
-            },
-        )
-
-    return render(request, "employees/company_login.html")
-
-
-def admin_login(request):
-    if not request.session.get("company_access"):
-        return redirect("login")
-
-    error = None
-
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            if user.is_superuser or user.groups.filter(name="Admin").exists():
-                login(request, user)
-                request.session.pop("company_access", None)
-                return redirect("dashboard")
-
-            error = "This account is not authorized for the Admin Dashboard."
-        else:
-            error = "Invalid username or password."
-
-    return render(
-        request,
-        "employees/admin_login.html",
-        {"error": error},
-    )
-
-
-def employee_login(request):
-    if not request.session.get("company_access"):
-        return redirect("login")
-
-    error = None
-
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            if user.groups.filter(name="Employee").exists():
-                login(request, user)
-                request.session.pop("company_access", None)
-                return redirect("employee_dashboard")
-
-            error = "This account is not authorized for the Employee Dashboard."
-        else:
-            error = "Invalid username or password."
-
-    return render(
-        request,
-        "employees/employee_login.html",
-        {"error": error},
-    )
-
-
-def hr_login(request):
-    if not request.session.get("company_access"):
-        return redirect("login")
-
-    error = None
-
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            if user.groups.filter(name="HR").exists():
-                login(request, user)
-                request.session.pop("company_access", None)
-                return redirect("hr_dashboard")
-
-            error = "This account is not authorized for the HR Dashboard."
-        else:
-            error = "Invalid username or password."
-
-    return render(
-        request,
-        "employees/hr_login.html",
-        {"error": error},
-    )
+def redirect_for_role(user):
+    """Send each authenticated account to its role's dashboard."""
+    if is_admin(user):
+        return redirect("dashboard")
+    if is_hr(user):
+        return redirect("hr_dashboard")
+    if is_employee(user):
+        return redirect("employee_dashboard")
+    return None
 
 
 def login_view(request):
+    if request.user.is_authenticated:
+        response = redirect_for_role(request.user)
+        if response:
+            return response
+        logout(request)
+
     if request.method == "POST":
-        username = request.POST.get("username")
+        username = request.POST.get("user_id", "").strip()
         password = request.POST.get("password")
 
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+            response = redirect_for_role(user)
+            if response is None:
+                return render(request, "employees/login.html", {
+                    "error": "This account does not have an assigned role."
+                })
             login(request, user)
-            return redirect("dashboard_selection")
+            return response
 
-        else:
-            return render(
-                request,
-                "employees/login.html",
-                {"error": "Invalid username or password"},
-            )
+        return render(
+            request,
+            "employees/login.html",
+            {"error": "Invalid user ID or password."},
+        )
 
     return render(request, "employees/login.html")
 
 
 def logout_view(request):
     logout(request)
-
-    request.session["company_access"] = True
-
-    return redirect("dashboard_selection")
-
-
-def company_logout_view(request):
-    logout(request)
-    request.session.flush()
     return redirect("login")
 
 
-def dashboard_selection(request):
-    if not request.session.get("company_access"):
-        return redirect("login")
+@login_required
+def password_change_view(request):
+    if request.method == "POST":
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+            return redirect("password_change_done")
+    else:
+        form = PasswordChangeForm(request.user)
 
-    return render(request, "employees/dashboard_selection.html")
+    return render(request, "employees/password_change.html", {"form": form})
+
+
+@login_required
+def password_change_done(request):
+    return render(request, "employees/password_change_done.html")
 
 
 @login_required

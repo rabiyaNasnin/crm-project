@@ -3,9 +3,9 @@ from .views import(
        home, dashboard, employee_dashboard, 
        create_robot, employee_create_leave, 
        employee_attendance, employee_mark_attendance, 
-       company_login, add_employee, edit_employee, 
-       edit_robot, dashboard_selection, admin_login, 
-       employee_login, hr_login, logout_view,company_logout_view,
+       add_employee, edit_employee,
+       edit_robot, login_view, logout_view, password_change_view,
+       password_change_done,
        chatbot,
        chatbot_api,
 )
@@ -13,13 +13,10 @@ from .views import(
 
 urlpatterns = [
     path("", home, name="home"),
-    path("login/", company_login, name="login"),
-    path("admin-login/", admin_login, name="admin_login"),
-    path("employee-login/", employee_login, name="employee_login"),
-    path("hr-login/", hr_login, name="hr_login"),
+    path("login/", login_view, name="login"),
     path("logout/", logout_view, name="logout"),
-    path("company-logout/",company_logout_view, name="company_logout"),
-    path("dashboard-selection/", dashboard_selection, name="dashboard_selection"),
+    path("password/change/", password_change_view, name="password_change"),
+    path("password/change/done/", password_change_done, name="password_change_done"),
     path("admin-dashboard/", dashboard, name="dashboard"),
     path("employee/", employee_dashboard, name="employee_dashboard"),#employee dashboard url
     path("employee/leave/", employee_create_leave, name="employee_create_leave"),

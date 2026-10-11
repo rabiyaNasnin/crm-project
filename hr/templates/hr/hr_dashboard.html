@@ -212,6 +212,7 @@
 
         <h1>HR Dashboard</h1>
 
+        <a href="{% url 'password_change' %}">Update password</a>
         <form method="POST" action="{% url 'logout' %}">
             {% csrf_token %}
             <button type="submit" class="logout-btn">

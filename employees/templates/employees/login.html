@@ -9,7 +9,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>CRM Login</title>
+<title>CRM Sign In</title>
 
 <style>
 
@@ -214,7 +214,7 @@
 
 
     <p class="subtitle">
-        Employee Management System
+        Sign in with your account
     </p>
 
 
@@ -232,15 +232,15 @@
         {% csrf_token %}
 
 
-        <label for="username">
-            Username
+        <label for="user_id">
+            User ID
         </label>
 
         <input
             type="text"
-            id="username"
-            name="username"
-            placeholder="Enter your username"
+            id="user_id"
+            name="user_id"
+            placeholder="Enter your user ID"
             required
         >
 

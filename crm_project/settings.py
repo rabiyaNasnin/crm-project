@@ -24,8 +24,6 @@ SECRET_KEY = 'django-insecure-7+04)70p(rr*j4*65$zzg5_hhd!y=_%01l(-$zm!hw+a^m8$b9
 import os
 import dj_database_url
 
-COMPANY_LOGIN_ID = os.environ.get("COMPANY_LOGIN_ID", "")
-COMPANY_LOGIN_PASSWORD = os.environ.get("COMPANY_LOGIN_PASSWORD", "")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-local-development-key")
