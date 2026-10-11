@@ -11,27 +11,30 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+
+import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load local development settings from crm_project/.env. Render supplies the
+# same values through its Environment settings, so no secrets need to be committed.
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7+04)70p(rr*j4*65$zzg5_hhd!y=_%01l(-$zm!hw+a^m8$b9'
-import os
-import dj_database_url
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-local-development-key")
+SECRET_KEY = os.environ.get("SECRET_KEY", "local-only-insecure-key-change-before-deploy")
 
-ALLOWED_HOSTS = os.environ.get(
-    "ALLOWED_HOSTS",
-    "localhost,127.0.0.1"
-).split(",")
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get(
+    "ALLOWED_HOSTS", "localhost,127.0.0.1"
+).split(",") if host.strip()]
 
 
 
@@ -83,14 +86,14 @@ WSGI_APPLICATION = 'crm_project.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
 if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=600,
-            ssl_require=True,
+            ssl_require=os.environ.get("DATABASE_SSL_REQUIRE", "true").lower() == "true",
         )
     }
 else:
