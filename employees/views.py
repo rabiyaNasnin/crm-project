@@ -3,6 +3,7 @@ import json
 import difflib
 
 from django.contrib.auth.models import User, Group
+from django.db import IntegrityError, transaction
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -940,24 +941,45 @@ def add_employee(request):
                 form.add_error("password", "Password is required.")
 
             else:
-                employee = form.save(commit=False)
-
-                # Create Django User account
-                user = User.objects.create_user(
-                    username=employee.employee_id,
-                    email=employee.email,
-                    password=password,
-                )
-
-                # Add user to Employee group
-                employee_group = Group.objects.get(name="Employee")
-                user.groups.add(employee_group)
-
-                # Connect User with Employee
-                employee.user = user
-                employee.save()
-
-                return redirect("dashboard")
+                try:
+                    with transaction.atomic():
+                        employee = form.save(commit=False)
+                        user = User.objects.filter(
+                            username=employee.employee_id
+                        ).first()
+                        if user is None:
+                            user = User.objects.create_user(
+                                username=employee.employee_id,
+                                email=employee.email,
+                                password=password,
+                            )
+                        elif user.is_superuser or hasattr(user, "employee_profile"):
+                            form.add_error(
+                                "employee_id",
+                                "This employee ID is already used by another account.",
+                            )
+                            return render(
+                                request,
+                                "employees/add_employee.html",
+                                {"form": form},
+                            )
+                        else:
+                            # Reuse an orphaned login from an earlier failed attempt.
+                            user.email = employee.email
+                            user.set_password(password)
+                            user.save()
+                        employee_group, _ = Group.objects.get_or_create(
+                            name="Employee"
+                        )
+                        user.groups.add(employee_group)
+                        employee.user = user
+                        employee.save()
+                    return redirect("dashboard")
+                except IntegrityError:
+                    form.add_error(
+                        "employee_id",
+                        "This employee ID is already used by a login account.",
+                    )
 
     else:
         form = EmployeeForm()
