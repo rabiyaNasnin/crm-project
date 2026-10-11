@@ -27,6 +27,16 @@ class RobotAdminForm(forms.ModelForm):
     )
 
 class EmployeeForm(forms.ModelForm):
+    department = forms.ChoiceField(
+        choices=[
+            ("Testing", "Testing"),
+            ("HR", "HR"),
+            ("Embedded", "Embedded"),
+            ("Aerospace", "Aerospace"),
+            ("Software", "Software"),
+        ],
+    )
+
     password = forms.CharField(
         required=False,
         widget=forms.PasswordInput(
@@ -58,9 +68,6 @@ class EmployeeForm(forms.ModelForm):
             }),
             "phone": forms.TextInput(attrs={
                 "placeholder": "Enter Phone Number"
-            }),
-            "department": forms.TextInput(attrs={
-                "placeholder": "Enter Department"
             }),
             "designation": forms.TextInput(attrs={
                 "placeholder": "Enter Designation"
