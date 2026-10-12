@@ -1,6 +1,7 @@
 import os
 import json
 import difflib
+import re
 
 from django.contrib.auth.models import User, Group
 from django.db import IntegrityError, transaction
@@ -135,6 +136,93 @@ def get_attendance(start_date="", end_date="", employee=None, employee_name=""):
         "attendance_records": attendance_records,
         "daily_summary": daily_summary,
     }
+
+
+def _attendance_dates_from_prompt(prompt):
+    """Extract explicit dates, keeping both interpretations of slash dates."""
+    found = []
+
+    for match in re.finditer(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b", prompt):
+        try:
+            found.append(timezone.datetime.strptime(match.group(), "%Y-%m-%d").date())
+        except ValueError:
+            continue
+
+    for match in re.finditer(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b", prompt):
+        first, second, year = map(int, match.groups())
+        # Keep both MM/DD and DD/MM candidates when the date is ambiguous.
+        candidates = sorted({(first, second), (second, first)})
+        for month, day in candidates:
+            try:
+                found.append(timezone.datetime(year, month, day).date())
+            except ValueError:
+                continue
+
+    month_pattern = (
+        r"January|February|March|April|May|June|July|August|September|October|November|December|"
+        r"Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec"
+    )
+    text_date_pattern = (
+        rf"\b(?:{month_pattern})\.?\s+\d{{1,2}},?\s+\d{{4}}\b"
+        rf"|\b\d{{1,2}}\s+(?:{month_pattern})\.?,?\s+\d{{4}}\b"
+    )
+    for match in re.finditer(text_date_pattern, prompt, flags=re.IGNORECASE):
+        value = match.group().replace(",", "")
+        for date_format in (
+            "%B %d %Y", "%b %d %Y", "%b. %d %Y",
+            "%d %B %Y", "%d %b %Y", "%d %b. %Y",
+        ):
+            try:
+                found.append(timezone.datetime.strptime(value, date_format).date())
+                break
+            except ValueError:
+                continue
+
+    # Preserve order while removing duplicate interpretations.
+    return list(dict.fromkeys(found))
+
+
+def _answer_explicit_attendance_question(user, prompt):
+    """Answer dated attendance questions directly from this deployment's DB."""
+    if not re.search(r"\battendance\b", prompt, flags=re.IGNORECASE):
+        return None
+
+    dates = _attendance_dates_from_prompt(prompt)
+    if not dates:
+        return None
+
+    employee_filter = None
+    if is_employee(user) and not is_hr(user) and not is_admin(user):
+        employee_filter = Employee.objects.filter(user=user).first()
+        if employee_filter is None:
+            return "I couldn't find an employee profile linked to your account."
+
+    employee_name = _resolve_employee_name(prompt)
+    lines = []
+    for day in dates:
+        data = get_attendance(
+            start_date=day.isoformat(),
+            end_date=day.isoformat(),
+            employee=employee_filter,
+            employee_name=employee_name if employee_filter is None else "",
+        )
+        records = data["attendance_records"]
+        if records:
+            lines.append(f"Attendance for {day.isoformat()}:")
+            lines.extend(
+                f"- {record['employee_name']}: {record['status']}"
+                for record in records
+            )
+        else:
+            lines.append(f"No attendance records were found for {day.isoformat()}.")
+
+    if len(dates) > 1:
+        lines.insert(
+            0,
+            "That slash-formatted date can mean more than one day, "
+            "so I checked both interpretations.",
+        )
+    return "\n".join(lines)
 
 
 def get_employee_data(
@@ -716,6 +804,10 @@ def run_crm_chatbot(user, prompt):
     answer. This is what lets the bot answer ANY question, not just the
     handful of hard-coded cases.
     """
+    attendance_answer = _answer_explicit_attendance_question(user, prompt)
+    if attendance_answer is not None:
+        return attendance_answer
+
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
     messages = [
