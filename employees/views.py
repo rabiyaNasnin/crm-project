@@ -184,7 +184,12 @@ def _attendance_dates_from_prompt(prompt):
 
 def _answer_explicit_attendance_question(user, prompt):
     """Answer dated attendance questions directly from this deployment's DB."""
-    if not re.search(r"\battendance\b", prompt, flags=re.IGNORECASE):
+    attendance_terms = re.search(
+        r"\b(attendance|present|absent|on leave|marked)\b",
+        prompt,
+        flags=re.IGNORECASE,
+    )
+    if not attendance_terms:
         return None
 
     dates = _attendance_dates_from_prompt(prompt)
@@ -198,6 +203,8 @@ def _answer_explicit_attendance_question(user, prompt):
             return "I couldn't find an employee profile linked to your account."
 
     employee_name = _resolve_employee_name(prompt)
+    asks_count = re.search(r"\b(how many|count|number of|total)\b", prompt, re.IGNORECASE)
+    status_match = re.search(r"\b(present|absent|leave)\b", prompt, re.IGNORECASE)
     lines = []
     for day in dates:
         data = get_attendance(
@@ -207,6 +214,13 @@ def _answer_explicit_attendance_question(user, prompt):
             employee_name=employee_name if employee_filter is None else "",
         )
         records = data["attendance_records"]
+        if asks_count and status_match:
+            status = status_match.group(1).title()
+            count = sum(1 for record in records if record["status"].lower() == status.lower())
+            lines.append(
+                f"{count} employee(s) were marked {status.lower()} on {day.isoformat()}."
+            )
+            continue
         if records:
             lines.append(f"Attendance for {day.isoformat()}:")
             lines.extend(
