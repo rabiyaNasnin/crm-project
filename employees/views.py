@@ -1,6 +1,7 @@
 import os
 import json
 import difflib
+import logging
 import re
 
 from django.contrib.auth.models import User, Group
@@ -22,6 +23,7 @@ from hr.models import Attendance, Leave
 
 
 GROQ_MODEL = "openai/gpt-oss-120b"
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -941,8 +943,12 @@ def chatbot_api(request):
 
     try:
         answer = run_crm_chatbot(request.user, prompt)
-    except Exception as exc:
-        return JsonResponse({"error": str(exc)}, status=500)
+    except Exception:
+        logger.exception("CRM chatbot request failed for user %s", request.user.pk)
+        return JsonResponse(
+            {"error": "The assistant request failed. Check the server logs."},
+            status=500,
+        )
 
     return JsonResponse({"answer": answer})
 

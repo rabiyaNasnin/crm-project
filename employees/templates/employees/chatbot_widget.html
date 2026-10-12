@@ -329,13 +329,17 @@
                 }
             );
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(
-                    data.error || "Something went wrong."
-                );
+                let message = `The assistant request failed (HTTP ${response.status}).`;
+                const contentType = response.headers.get("content-type") || "";
+                if (contentType.includes("application/json")) {
+                    const errorData = await response.json();
+                    if (errorData.error) message = errorData.error;
+                }
+                throw new Error(message);
             }
+
+            const data = await response.json();
 
             aiMessage.innerHTML =
                 "<strong>AI Assistant</strong><br>";
@@ -346,11 +350,10 @@
             aiMessage.appendChild(answerText);
 
         } catch (error) {
-
-            aiMessage.innerHTML =
-                "<strong>AI Assistant</strong><br>" +
-                "Sorry, I couldn't process your request.";
-
+            aiMessage.innerHTML = "<strong>AI Assistant</strong><br>";
+            const errorText = document.createElement("div");
+            errorText.textContent = error.message || "The assistant request failed.";
+            aiMessage.appendChild(errorText);
             console.error("Chatbot error:", error);
         }
 
