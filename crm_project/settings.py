@@ -86,7 +86,12 @@ WSGI_APPLICATION = 'crm_project.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+# Prefer the dedicated Supabase setting, while keeping DATABASE_URL compatible
+# with Render PostgreSQL and existing local deployments.
+DATABASE_URL = (
+    os.environ.get("SUPABASE_DB_URL", "").strip()
+    or os.environ.get("DATABASE_URL", "").strip()
+)
 
 if DATABASE_URL:
     DATABASES = {
